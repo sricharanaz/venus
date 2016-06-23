@@ -18,8 +18,8 @@
 
 # Toolchain path
 #TCPATH = arm-linux-gnueabihf-
-TCPATH = aarch64-linux-gnu-
-KERNELHEADERS = /usr/include
+TCPATH = /local/mnt/workspace/compilers/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux/bin/aarch64-linux-gnu-
+KERNELHEADERS = /local/mnt/workspace/kernel/mainline/linux/kobj-linaro/usr/include
 
 CC = ${TCPATH}gcc
 AR = "${TCPATH}ar rc"
