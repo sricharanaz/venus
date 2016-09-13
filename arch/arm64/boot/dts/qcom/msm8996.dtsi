@@ -560,9 +560,9 @@
 	                reg-names = "reg-base", "mem-base";
 
 			power-domains = <&mmcc MMAGIC_VIDEO_GDSC>;
-	                clocks = <&mmcc VMEM_MAXI_CLK>,
-                	         <&mmcc VMEM_AHB_CLK>;
-	                clock-names = "maxi", "ahb";
+	                clocks = <&mmcc VMEM_AHB_CLK>,
+				 <&mmcc VMEM_MAXI_CLK>;
+	                clock-names = "ahb", "maxi";
 	                qcom,bank-size = <131072>; /* 128 kB */
 	        };
 	};

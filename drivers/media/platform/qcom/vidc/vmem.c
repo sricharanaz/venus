@@ -21,6 +21,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include "vmem.h"
@@ -111,6 +112,7 @@ struct vmem {
 	int num_clocks;
 	atomic_t alloc_count;
 	struct dentry *debugfs_root;
+	struct device *dev;
 };
 
 static struct vmem *vmem;
@@ -163,8 +165,17 @@ static inline int __power_on(struct vmem *v)
 {
 	int rc = 0, c = 0;
 
+        pm_runtime_enable(v->dev);
+
+        rc = pm_runtime_get_sync(v->dev);
+        if (rc) {
+		dev_err(v->dev, "__power_on failed for pm_runtime_get_sync");
+                goto exit;
+	}
+
 	for (c = 0; c < v->num_clocks; ++c) {
 		rc = clk_prepare_enable(v->clocks[c].clk);
+
 		if (rc) {
 			pr_err("Failed to enable %s clock (%d)\n",
 					v->clocks[c].name, rc);
@@ -418,6 +429,8 @@ static inline int __init_resources(struct vmem *v,
 {
 	int rc = 0, c = 0;
 
+	v->dev = &pdev->dev;
+
 	v->irq = platform_get_irq(pdev, 0);
 	if (v->irq < 0) {
 		rc = v->irq;
@@ -521,8 +534,6 @@ static inline void __uninit_resources(struct vmem *v,
 		v->clocks[c].clk = NULL;
 		v->clocks[c].name = NULL;
 	}
-
-	v->vdd = NULL;
 }
 
 static int vmem_probe(struct platform_device *pdev)
@@ -591,8 +602,8 @@ static int vmem_probe(struct platform_device *pdev)
 	/* Everything good so far, set up the global context and debug hooks */
 	pr_info("Up and running with %d banks of memory from %pR\n",
 			v->num_banks, &v->mem.resource);
-	v->debugfs_root = vmem_debugfs_init(pdev);
 	platform_set_drvdata(pdev, v);
+	v->debugfs_root = vmem_debugfs_init(pdev);
 	vmem = v;
 
 disable_clocks:
