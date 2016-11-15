@@ -1,0 +1,133 @@
+1) Build the kernel
+
+2) Make sure the venus firmware files are a part of the filesystem and copied
+   to lib/firmware/ folder
+
+   # Loads the venus firmware,  ofcourse just my hack for doing it.
+   # ideally should be done using the remoteproc sysfs entry, its ok for now
+3) echo 1 > /sys/kernel/kobject_example/foo
+
+4) Build the testcase on the target
+   clone it from: https//git.linaro.org/people/stanimir.varbanov/v4l2-decode.git
+   and copy to the FS
+
+   Note the changes that i did to the testcase to build it on my target
+   make
+
+# Run the testcase
+5) ./v4l2_decode -w 1280 -h 720 -c h264 -i test-streams/FVDO_Freeway_720p.264 -m /dev/video32
+
+
+TESTCASE CHANGES
+----------------------------------------------------------------------------------------------------------
+diff --git a/Makefile b/Makefile
+index 4076e20..a2beaf1 100644
+--- a/Makefile
++++ b/Makefile
+@@ -17,27 +17,27 @@
+ #
+
+ # Toolchain path
+-#TCPATH = arm-linux-gnueabihf-
+-TCPATH = /local/mnt/workspace/compilers/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux/bin/aarch64-linux-gnu-
+-KERNELHEADERS = /local/mnt/workspace/kernel/mainline/linux/kobj-linaro/usr/include
++TCPATH = aarch64-linux-gnu-
++#TCPATH = /local/mnt/workspace/compilers/gcc-linaro-aarch64-linux-gnu-4.9-2014.09_linux/bin/aarch64-linux-gnu-
++KERNELHEADERS = /usr/include
+
+ CC = ${TCPATH}gcc
+ AR = "${TCPATH}ar rc"
+ AR2 = ${TCPATH}ranlib make -j4
+
+-INCLUDES = -I$(KERNELHEADERS) -I/usr/include/libdrm
++INCLUDES = -I$(KERNELHEADERS) -I/usr/include/libdrm -I/usr/include
+
+ #INCLUDES = -I$(KERNELHEADERS)/include
+
+ #-I$(TARGETROOT)/usr/include/linux
+
+-SOURCES = main.c drm.c fileops.c args.c parser.c video.c
++SOURCES = main.c fileops.c args.c parser.c video.c
+ OBJECTS := $(SOURCES:.c=.o)
+ EXEC = v4l2_decode
+ CFLAGS = -Wall -g -std=gnu99
+ #-Os
+-LIBS = -lpthread -ldrm_freedreno -lm
++LIBS = -lpthread -lm
+ LIBPATH = -L/usr/lib/aarch64-linux-gnu
+ LDFLAGS = -o $(EXEC) $(LIBPATH) $(LIBS)
+
+@@ -47,7 +47,7 @@ all: $(EXEC)
+        $(CC) -c $(CFLAGS) $(INCLUDES) $<
+
+ $(EXEC): $(OBJECTS)
+-       $(CC) -o $(EXEC) $(OBJECTS) -lpthread -ldrm -ldrm_freedreno
++       $(CC) -o $(EXEC) $(OBJECTS) -lpthread
+
+ clean:
+        rm -f *.o $(EXEC)
+diff --git a/main.c b/main.c
+index 7bfb85d..dc85384 100644
+--- a/main.c
++++ b/main.c
+@@ -453,13 +453,13 @@ static void *main_thread_func(void *args)
+                        disp_idx = i->use_dmabuf ? n : 0;
+
+                        time_start();
+-
++#if 0
+                        if (i->use_drm)
+                                drm_display_buf(vid->cap_buf_addr[n][0],
+                                                &i->disp_buf[disp_idx],
+                                                bytesused,
+                                                vid->cap_w, vid->cap_h);
+-
++ndif
+                        print_time_delta("disp");
+
+                        save_frame(i, (void *)vid->cap_buf_addr[n][0],
+@@ -531,11 +531,11 @@ int main(int argc, char **argv)
+        ret = trace_init(&inst);
+        if (ret)
+                goto err;
+-
++#if 0
+        ret = drm_init();
+        if (inst.use_drm && ret)
+                goto err;
+-
++#endif
+        ret = parse_stream_init(&inst.parser.ctx);
+        if (ret)
+                goto err;
+@@ -572,7 +572,7 @@ int main(int argc, char **argv)
+        ret = video_set_framerate(&inst, 30);
+        if (ret)
+                goto err;
+-
++#if 0
+        if (inst.use_dmabuf && inst.use_drm)
+                ret = drm_create_bufs(inst.disp_buf, vid->cap_buf_cnt,
+                                      vid->cap_w, vid->cap_h, 0);
+@@ -581,7 +581,7 @@ int main(int argc, char **argv)
+                                      vid->cap_h, 1);
+        if (inst.use_drm && ret)
+                goto err;
+-
++#endif
+        ret = extract_and_process_header(&inst);
+        if (ret)
+                goto err;
+@@ -631,14 +631,14 @@ int main(int argc, char **argv)
+        video_stop(&inst);
+
+        info("Total frames captured %ld", vid->total_captured);
+-
++#if 0
+        if (inst.use_drm && inst.use_dmabuf)
+                drm_destroy_bufs(inst.disp_buf, vid->cap_buf_cnt, 0);
+        else if (inst.use_drm)
+                drm_destroy_bufs(inst.disp_buf, 1, 1);
+
+        drm_deinit();
+#endif
